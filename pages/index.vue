@@ -270,7 +270,7 @@ function loadMore() {
 
 .search_input {
   width: 100%;
-  font-size: var(--size-xs);
+  font-size: var(--size-base);
   border: none;
   background-color: var(--card-bg);
   box-shadow: var(--bs);
