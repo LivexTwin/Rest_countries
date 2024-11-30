@@ -30,4 +30,13 @@
   border-bottom: 1px solid var(--clr-secondary-1);
   color: var(--clr-secondary-1);
 }
+
+/* mq lg */
+@media (min-width: 1440px) {
+  .footer {
+    font-size: var(--size-sm);
+    padding: 1rem 8rem;
+  }
+}
+/*  */
 </style>

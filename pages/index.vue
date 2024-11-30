@@ -93,12 +93,28 @@
   </div>
 
   <!-- Display countries or a message if no countries match -->
-  <div v-if="filteredCountries.length > 0" class="country_cards">
+  <!-- <div v-if="filteredCountries.length > 0" class="country_cards">
     <CountryCard
       v-for="country in filteredCountries"
       :key="country.cca3"
       :country="country"
     />
+  </div> -->
+
+  <div v-if="paginatedCountries.length > 0" class="country_cards">
+    <CountryCard
+      v-for="country in paginatedCountries"
+      :key="country.cca3"
+      :country="country"
+    />
+  </div>
+
+  <!-- Show More button -->
+  <div
+    v-if="paginatedCountries.length < filteredCountries.length"
+    class="pagination"
+  >
+    <button @click="loadMore" class="show-more-btn">Show More</button>
   </div>
 
   <!-- Show 'No countries match your search' when filteredCountries is empty -->
@@ -166,13 +182,9 @@ function onRegionChange() {
   }
 }
 
-// Watch for changes in the selected region and trigger an API call
-watch(selectedRegion, (newRegion) => {
-  if (newRegion) {
-    fetchCountriesByRegion(newRegion); // Fetch countries for selected region
-  } else {
-    fetchAllCountries(); // Fetch all countries if no region is selected
-  }
+// Watch for changes in the search query or selected region
+watch([searchQuery, selectedRegion], () => {
+  currentPage.value = 1; // Reset to the first page when filters change
 });
 
 // Initially fetch all countries when the component is mounted
@@ -185,16 +197,32 @@ function searchCountries() {
   // This function is here to handle the search when the user presses enter or clicks search
 }
 
-// Computed property to filter countries based on search query
+// Computed property to filter countries based on the search query
 const filteredCountries = computed(() => {
-  if (!searchQuery.value) {
-    return displayedCountries.value; // No search query, return all countries
-  }
   const query = searchQuery.value.toLowerCase();
-  return displayedCountries.value.filter((country) =>
-    country.name.common.toLowerCase().includes(query)
-  );
+  return displayedCountries.value.filter((country) => {
+    const matchesSearch = country.name.common.toLowerCase().includes(query);
+    const matchesRegion =
+      !selectedRegion.value || country.region === selectedRegion.value;
+    return matchesSearch && matchesRegion;
+  });
 });
+
+// pagination
+const currentPage = ref(1); // Tracks the current page
+const itemsPerPage = 8; // Number of countries per page
+
+// Paginated countries based on the filtered list
+const paginatedCountries = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage;
+  const end = start + itemsPerPage;
+  return filteredCountries.value.slice(start, end);
+});
+
+// Function to load the next page
+function loadMore() {
+  currentPage.value++;
+}
 </script>
 
 <style scoped>
@@ -261,6 +289,7 @@ const filteredCountries = computed(() => {
   .container {
     flex-direction: row;
     justify-content: space-between;
+    margin-bottom: 1.75rem;
   }
 
   .country_cards {
@@ -271,6 +300,27 @@ const filteredCountries = computed(() => {
   .search_input {
     width: 400px;
   }
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  margin-top: 2rem;
+}
+
+.show-more-btn {
+  padding: 0.75rem 1.5rem;
+  font-size: var(--size-sm);
+  background-color: var(--card-bg);
+  color: var(--text-light);
+  margin-top: 1rem;
+  border-radius: var(--br);
+  margin-bottom: 1.75rem;
+  box-shadow: var(--bs);
+}
+
+.show-more-btn:hover {
+  background-color: var(--primary-dark);
 }
 /*  */
 </style>

@@ -2,8 +2,10 @@
   <TheNav :isDark="isDark" :toggleDark="toggleDark" />
   <div :class="['wrapper', { dark: isDark }]">
     <slot />
-    <TheFooter />
   </div>
+  <footer>
+    <TheFooter />
+  </footer>
 </template>
 
 <script lang="ts" setup>
