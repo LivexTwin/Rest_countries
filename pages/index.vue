@@ -20,8 +20,8 @@
       <!-- Region Filter Dropdown -->
       <SelectRoot
         class="SelectRoot"
-        v-model="selectedRegion"
-        @change="onRegionChange"
+        :model-value="selectedRegion"
+        @update:modelValue="onRegionChange"
       >
         <SelectTrigger class="SelectTrigger">
           <SelectValue placeholder="Filter by Region" />
@@ -147,6 +147,7 @@ const selectedRegion = ref(""); // For selected region
 const displayedCountries = ref([]); // For countries displayed based on selected region
 const error = ref(null); // Error state for failed API requests
 const searchQuery = ref(""); // For search query input
+const paginatedCountries = ref([]); // Initialize as an empty array
 
 // Function to fetch countries based on the selected region
 async function fetchCountriesByRegion(region) {
@@ -174,11 +175,17 @@ async function fetchAllCountries() {
 }
 
 // Define onRegionChange function to handle region selection changes
-function onRegionChange() {
-  if (selectedRegion.value) {
-    fetchCountriesByRegion(selectedRegion.value); // Fetch countries for selected region
-  } else {
-    fetchAllCountries(); // Fetch all countries if no region is selected
+async function onRegionChange(region) {
+  selectedRegion.value = region;
+  try {
+    const apiUrl = region
+      ? `https://restcountries.com/v3.1/region/${region}`
+      : "https://restcountries.com/v3.1/all";
+    const data = await $fetch(apiUrl);
+    displayedCountries.value = data || [];
+  } catch (err) {
+    console.error("Error fetching countries:", err);
+    error.value = "Error fetching countries.";
   }
 }
 
@@ -190,12 +197,14 @@ watch([searchQuery, selectedRegion], () => {
 // Initially fetch all countries when the component is mounted
 onMounted(() => {
   fetchAllCountries();
+  paginatedCountries.value = filteredCountries.value.slice(0, itemsPerPage);
 });
 
 // Function to handle search execution (either by Enter key or search button)
-function searchCountries() {
-  // This function is here to handle the search when the user presses enter or clicks search
-}
+watch([searchQuery, selectedRegion], () => {
+  currentPage.value = 1; // Reset to the first page when filters change
+  paginatedCountries.value = filteredCountries.value.slice(0, itemsPerPage); // Load the initial items again
+});
 
 // Computed property to filter countries based on the search query
 const filteredCountries = computed(() => {
@@ -208,20 +217,23 @@ const filteredCountries = computed(() => {
   });
 });
 
+watch(filteredCountries, () => {
+  currentPage.value = 1; // Reset pagination
+  paginatedCountries.value = filteredCountries.value.slice(0, itemsPerPage); // Reset displayed items
+});
+
 // pagination
 const currentPage = ref(1); // Tracks the current page
 const itemsPerPage = 8; // Number of countries per page
 
-// Paginated countries based on the filtered list
-const paginatedCountries = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage;
-  const end = start + itemsPerPage;
-  return filteredCountries.value.slice(start, end);
-});
-
 // Function to load the next page
 function loadMore() {
-  currentPage.value++;
+  const start = paginatedCountries.value.length; // Start after the currently loaded items
+  const end = start + itemsPerPage; // Load the next set of items
+  paginatedCountries.value = [
+    ...paginatedCountries.value, // Keep the existing items
+    ...filteredCountries.value.slice(start, end), // Add the new items
+  ];
 }
 </script>
 
@@ -230,22 +242,8 @@ function loadMore() {
   display: flex;
   flex-direction: column;
   gap: 2.5rem;
+  padding-bottom: 2rem;
 }
-
-/* search styles */
-/* .search_container {
-  padding: 0 1rem;
-  display: flex;
-}
-
-.search_input {
-  width: 100%;
-  padding: 0.5rem 1.5rem;
-  font-size: var(--size-xxs);
-  color: var(--secondary-1);
-  border: none;
-  box-shadow: var(--bs);
-} */
 
 .container {
   display: flex;

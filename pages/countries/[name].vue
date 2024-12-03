@@ -19,26 +19,30 @@
         <h1>{{ country.name.common }}</h1>
 
         <div class="info_main">
-          <p>
-            <strong>Population:</strong>
-            {{ country.population.toLocaleString() }}
-          </p>
-          <p><strong>Region:</strong> {{ country.region }}</p>
-          <p><strong>Subregion:</strong> {{ country.subregion }}</p>
-          <p><strong>Capital:</strong> {{ country.capital?.join(", ") }}</p>
+          <ul>
+            <li>
+              <strong>Population:</strong>
+              {{ country.population }}
+            </li>
+            <li><strong>Region:</strong> {{ country.region }}</li>
+            <li><strong>Subregion:</strong> {{ country.subregion }}</li>
+            <li><strong>Capital:</strong> {{ country.capital?.join(", ") }}</li>
+          </ul>
         </div>
 
         <!-- Additional Info -->
         <div class="info_add">
-          <p>
-            <strong>Top Level Domain:</strong> {{ country.tld?.join(", ") }}
-          </p>
-          <p><strong>Currencies:</strong> {{ currencies }}</p>
-          <p><strong>Languages:</strong> {{ languages }}</p>
+          <ul>
+            <li>
+              <strong>Top Level Domain:</strong> {{ country.tld?.join(", ") }}
+            </li>
+            <li><strong>Currencies:</strong> {{ currencies }}</li>
+            <li><strong>Languages:</strong> {{ languages }}</li>
+          </ul>
         </div>
 
         <!-- Border Countries -->
-        <div v-if="country.bordersData" class="borders">
+        <div v-if="country.borders && country.bordersData" class="borders">
           Border Countries:
           <ul>
             <li
@@ -61,77 +65,46 @@
 </template>
 
 <script setup>
+import { useRoute, useRouter } from "vue-router";
+import { useAsyncData } from "#app";
+
 const route = useRoute();
 const router = useRouter();
-const country = ref(null);
-const error = ref(null);
 
-async function fetchBorderData(codes) {
-  const apiUrl = `https://restcountries.com/v3.1/alpha?codes=${codes.join(
-    ","
-  )}`;
-  const data = await $fetch(apiUrl);
-  const bordersData = {};
-  data.forEach((country) => {
-    bordersData[country.cca3] = country.name.common;
-  });
-  return bordersData;
-}
+// Fetch country data with useAsyncData
+const { data: country, error } = await useAsyncData("country", async () => {
+  const handle = decodeURIComponent(route.params.name).replace(/-/g, " ");
+  const apiUrl = `https://restcountries.com/v3.1/all`;
+  const countries = await $fetch(apiUrl);
 
-console.log(country.value?.borders); // Check if borders array exists
+  const matchedCountry = countries.find(
+    (c) => c.name.common.toLowerCase() === handle.toLowerCase()
+  );
 
-// async function fetchCountryByHandle(handle) {
-//   try {
-//     const apiUrl = `https://restcountries.com/v3.1/all`;
-//     const countries = await $fetch(apiUrl);
-//     const decodedHandle = decodeURIComponent(handle).replace(/-/g, " "); // Reverse the hyphenation
-//     const matchedCountry = countries.find(
-//       (c) => c.name.common.toLowerCase() === decodedHandle.toLowerCase()
-//     );
-//     if (matchedCountry) {
-//       country.value = matchedCountry;
-//     } else {
-//       throw new Error("Country not found");
-//     }
-//   } catch (error) {
-//     console.error("Error fetching country by handle:", error);
-//   }
-// }
-
-async function fetchCountryByHandle(handle) {
-  try {
-    const apiUrl = `https://restcountries.com/v3.1/all`;
-    const countries = await $fetch(apiUrl);
-    const decodedHandle = decodeURIComponent(handle).replace(/-/g, " ");
-    const matchedCountry = countries.find(
-      (c) => c.name.common.toLowerCase() === decodedHandle.toLowerCase()
-    );
-
-    if (matchedCountry) {
-      country.value = matchedCountry;
-
-      // Fetch border country names if borders exist
-      if (matchedCountry.borders?.length) {
-        const bordersData = await fetchBorderData(matchedCountry.borders);
-        country.value.bordersData = bordersData;
-      }
-    } else {
-      throw new Error("Country not found");
-    }
-  } catch (error) {
-    console.error("Error fetching country by handle:", error);
+  if (!matchedCountry) {
+    throw new Error("Country not found");
   }
-}
 
-onMounted(() => {
-  fetchCountryByHandle(route.params.name);
+  // Fetch border country names if borders exist
+  if (matchedCountry.borders?.length) {
+    const bordersApiUrl = `https://restcountries.com/v3.1/alpha?codes=${matchedCountry.borders.join(
+      ","
+    )}`;
+    const borderCountries = await $fetch(bordersApiUrl);
+    matchedCountry.bordersData = borderCountries.reduce((acc, border) => {
+      acc[border.cca3] = border.name.common;
+      return acc;
+    }, {});
+  }
+
+  return matchedCountry;
 });
 
 // Computed properties for currencies and languages
 const currencies = computed(() =>
   country.value?.currencies
     ? Object.values(country.value.currencies)
-        .map((currency) => currency.name)
+        .map((c) => c.name)
         .join(", ")
     : "N/A"
 );
@@ -142,10 +115,30 @@ const languages = computed(() =>
     : "N/A"
 );
 
-// Navigation back to previous page
+// Navigation back to the previous page
 function goBack() {
   router.back();
 }
+
+async function fetchBorderData(codes) {
+  if (!codes || codes.length === 0) return {};
+  const apiUrl = `https://restcountries.com/v3.1/alpha?codes=${codes.join(
+    ","
+  )}`;
+  return await $fetch(apiUrl).then((data) =>
+    data.reduce((acc, border) => {
+      acc[border.cca3] = border.name.common;
+      return acc;
+    }, {})
+  );
+}
+
+onMounted(async () => {
+  if (country.value?.borders?.length) {
+    const bordersData = await fetchBorderData(country.value.borders);
+    country.value.bordersData = bordersData;
+  }
+});
 </script>
 
 <style scoped>
@@ -155,7 +148,6 @@ function goBack() {
 
 .flag {
   width: 100%;
-
   max-height: 300px;
   object-fit: contain;
   margin-bottom: 2rem;
@@ -172,9 +164,9 @@ function goBack() {
   gap: 2rem;
 }
 
-.info p {
+.info li {
   font-size: var(--size-sm);
-  color: var(--clr-secondary-1);
+
   line-height: 2;
 }
 
@@ -211,19 +203,15 @@ function goBack() {
 
   .flag {
     max-height: 400px;
-
     object-fit: contain;
   }
 
-  /* .info {
-    flex-direction: row;
-  } */
   .info {
     display: grid;
-    grid-template-rows: auto 1fr auto; /* Three rows: h1, two divs, and the last div */
-    grid-template-columns: 1fr 1fr; /* Two equal columns for the middle row */
-    gap: 1.5rem; /* Space between items */
-    width: 100%; /* Full width for layout consistency */
+    grid-template-rows: auto 1fr auto;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    width: 100%;
     padding: 2rem 5rem;
   }
 
@@ -232,29 +220,25 @@ function goBack() {
     line-height: 2.2;
   }
 
-  /* Ensure the h1 spans the entire first row */
   .info h1 {
-    grid-column: 1 / -1; /* Spans both columns */
-    grid-row: 1; /* First row */
+    grid-column: 1 / -1;
+    grid-row: 1;
     font-size: var(--size-3xl);
   }
 
-  /* The first div (info_main) occupies the first column of the second row */
   .info_main {
-    grid-column: 1; /* First column */
-    grid-row: 2; /* Second row */
+    grid-column: 1;
+    grid-row: 2;
   }
 
-  /* The second div (info_add) occupies the second column of the second row */
   .info_add {
-    grid-column: 2; /* Second column */
-    grid-row: 2; /* Second row */
+    grid-column: 2;
+    grid-row: 2;
   }
 
-  /* The third div (borders) spans the entire last row */
   .borders {
-    grid-column: 1 / -1; /* Spans both columns */
-    grid-row: 3; /* Third row */
+    grid-column: 1 / -1;
+    grid-row: 3;
     display: flex;
     gap: 1rem;
     align-items: center;

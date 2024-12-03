@@ -11,6 +11,8 @@
   --background-color: var(--clr-primary-2);
   --text-color: var(--clr-dark);
   --hover: var(--clr-primary-2);
+  --header-bg: var(--clr-light);
+  --card-bg: var(--clr-light); /* Override for lighter card */
 
   /* weights */
   --fw-1: 300;

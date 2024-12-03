@@ -12,15 +12,18 @@
         height="150px"
       />
       <div class="country_card-info">
-        <h3>{{ country.name.common }}</h3>
-        <p>
-          <strong>Population:</strong> {{ country.population.toLocaleString() }}
-        </p>
-        <p><strong>Region:</strong> {{ country.region }}</p>
-        <p>
-          <strong>Capital:</strong>
-          {{ country.capital ? country.capital[0] : "N/A" }}
-        </p>
+        <h2>{{ country.name.common }}</h2>
+        <ul>
+          <li>
+            <strong>Population:</strong>
+            {{ country.population.toLocaleString() }}
+          </li>
+          <li><strong>Region:</strong> {{ country.region }}</li>
+          <li>
+            <strong>Capital:</strong>
+            {{ country.capital ? country.capital[0] : "N/A" }}
+          </li>
+        </ul>
       </div>
     </NuxtLink>
   </div>
@@ -60,7 +63,7 @@ function formatHandle(name) {
   height: 150px;
 }
 
-.country_card h3 {
+.country_card h2 {
   padding-bottom: 1rem;
 }
 .country_card-info {

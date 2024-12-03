@@ -11,6 +11,15 @@ export default defineNuxtConfig({
           rel: "stylesheet",
           href: "https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap",
         },
+        {
+          rel: "dns-prefetch",
+          href: " https://flagcdn.com",
+        },
+        {
+          rel: " preconnect",
+          href: "https://flagcdn.com",
+          crossorigin: "anonymous",
+        },
       ],
     },
   },
@@ -18,5 +27,6 @@ export default defineNuxtConfig({
   modules: ["@nuxt/icon"],
   routeRules: {
     "/": { prerender: true },
+    "/countries/**": { swr: 3600 },
   },
 });
