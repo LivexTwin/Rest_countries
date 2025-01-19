@@ -148,65 +148,44 @@ const displayedCountries = ref([]); // For countries displayed based on selected
 const error = ref(null); // Error state for failed API requests
 const searchQuery = ref(""); // For search query input
 const paginatedCountries = ref([]); // Initialize as an empty array
+const currentPage = ref(1); // Tracks the current page
+const itemsPerPage = 8; // Number of countries per page
 
-// Function to fetch countries based on the selected region
-async function fetchCountriesByRegion(region) {
-  try {
-    const apiUrl = `https://restcountries.com/v3.1/region/${region}`;
-    const data = await $fetch(apiUrl);
-    console.log("Fetched countries by region:", data); // Log the fetched data
-    displayedCountries.value = data || [];
-  } catch (err) {
-    console.error("Error fetching countries by region:", err);
-    error.value = "Error fetching countries";
-  }
-}
-
+// Function to fetch all countries
 async function fetchAllCountries() {
   try {
     const apiUrl = "https://restcountries.com/v3.1/all";
-    const data = await $fetch(apiUrl);
-    console.log("Fetched all countries:", data); // Log the fetched data
-    displayedCountries.value = data || [];
+    const response = await fetch(apiUrl);
+    const data = await response.json();
+    displayedCountries.value = data;
   } catch (err) {
-    console.error("Error fetching all countries:", err);
-    error.value = "Error fetching countries";
+    console.error("Error fetching countries:", err);
+    error.value = "Failed to load countries.";
   }
 }
 
-// Define onRegionChange function to handle region selection changes
+// Function to handle region change
 async function onRegionChange(region) {
   selectedRegion.value = region;
   try {
     const apiUrl = region
       ? `https://restcountries.com/v3.1/region/${region}`
       : "https://restcountries.com/v3.1/all";
-    const data = await $fetch(apiUrl);
-    displayedCountries.value = data || [];
+    const response = await fetch(apiUrl);
+    const data = await response.json();
+    displayedCountries.value = data;
   } catch (err) {
-    console.error("Error fetching countries:", err);
+    console.error("Error fetching countries by region:", err);
     error.value = "Error fetching countries.";
   }
 }
 
-// Watch for changes in the search query or selected region
+// Watch for changes in search query or region filter
 watch([searchQuery, selectedRegion], () => {
   currentPage.value = 1; // Reset to the first page when filters change
 });
 
-// Initially fetch all countries when the component is mounted
-onMounted(() => {
-  fetchAllCountries();
-  paginatedCountries.value = filteredCountries.value.slice(0, itemsPerPage);
-});
-
-// Function to handle search execution (either by Enter key or search button)
-watch([searchQuery, selectedRegion], () => {
-  currentPage.value = 1; // Reset to the first page when filters change
-  paginatedCountries.value = filteredCountries.value.slice(0, itemsPerPage); // Load the initial items again
-});
-
-// Computed property to filter countries based on the search query
+// Computed property to filter countries based on the search query and region
 const filteredCountries = computed(() => {
   const query = searchQuery.value.toLowerCase();
   return displayedCountries.value.filter((country) => {
@@ -217,23 +196,21 @@ const filteredCountries = computed(() => {
   });
 });
 
-watch(filteredCountries, () => {
-  currentPage.value = 1; // Reset pagination
-  paginatedCountries.value = filteredCountries.value.slice(0, itemsPerPage); // Reset displayed items
+// Watch for changes in filtered countries and update pagination
+watch([filteredCountries, currentPage], () => {
+  const start = (currentPage.value - 1) * itemsPerPage;
+  const end = start + itemsPerPage;
+  paginatedCountries.value = filteredCountries.value.slice(start, end);
 });
 
-// pagination
-const currentPage = ref(1); // Tracks the current page
-const itemsPerPage = 8; // Number of countries per page
+// Load countries initially
+onMounted(() => {
+  fetchAllCountries();
+});
 
-// Function to load the next page
+// Function to load more countries (pagination)
 function loadMore() {
-  const start = paginatedCountries.value.length; // Start after the currently loaded items
-  const end = start + itemsPerPage; // Load the next set of items
-  paginatedCountries.value = [
-    ...paginatedCountries.value, // Keep the existing items
-    ...filteredCountries.value.slice(start, end), // Add the new items
-  ];
+  currentPage.value += 1;
 }
 </script>
 
